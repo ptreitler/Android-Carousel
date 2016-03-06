@@ -533,6 +533,7 @@ public class CoverFlowCarousel extends Carousel {
 
     }
 
+    /* Method that allows to change global rotation */
     public void setRotationThreshold(float rotationThreshold) {
         this.mRotationThreshold = rotationThreshold;
     }
