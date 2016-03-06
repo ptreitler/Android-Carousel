@@ -164,7 +164,9 @@ public class Carousel extends ViewGroup {
             if (mScroller.getFinalX() == mScroller.getCurrX()) {
                 mScroller.abortAnimation();
                 mTouchState = TOUCH_STATE_RESTING;
-                clearChildrenCache();
+                if (!checkScrollPosition()) {
+                    clearChildrenCache();
+                }
             } else {
                 final int x = mScroller.getCurrX();
                 scrollTo(x, 0);
@@ -173,7 +175,9 @@ public class Carousel extends ViewGroup {
             }
         } else if (mTouchState == TOUCH_STATE_FLING) {
             mTouchState = TOUCH_STATE_RESTING;
-            clearChildrenCache();
+            if (!checkScrollPosition()) {
+                clearChildrenCache();
+            }
         }
 
         refill();
@@ -587,6 +591,12 @@ public class Carousel extends ViewGroup {
                 break;
 
             case MotionEvent.ACTION_UP:
+                if(mTouchState == TOUCH_STATE_SCROLLING){
+                    if(checkScrollPosition()){
+                        break;
+                    }
+                }
+
                 mTouchState = TOUCH_STATE_RESTING;
                 clearChildrenCache();
                 break;
@@ -687,6 +697,7 @@ public class Carousel extends ViewGroup {
                         fling(-initialXVelocity, -initialYVelocity);
                     } else {
                         // Release the drag
+                        checkScrollPosition();
                         clearChildrenCache();
                         mTouchState = TOUCH_STATE_RESTING;
                     }
@@ -705,6 +716,12 @@ public class Carousel extends ViewGroup {
 
                 break;
             case MotionEvent.ACTION_CANCEL:
+                if(mTouchState == TOUCH_STATE_SCROLLING){
+                    if(checkScrollPosition()){
+                        break;
+                    }
+                }
+
                 mTouchState = TOUCH_STATE_RESTING;
         }
 
@@ -731,6 +748,14 @@ public class Carousel extends ViewGroup {
             rightInPixels - centerItemRight + 1, 0, 0);
 
         invalidate();
+    }
+
+    /**
+     * Allows to make scroll alignments
+     * @return true if invalidate() was issued, and container is going to scroll
+     */
+    protected boolean checkScrollPosition(){
+        return false;
     }
 
     private void enableChildrenCache() {

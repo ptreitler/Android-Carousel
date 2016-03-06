@@ -9,3 +9,17 @@
 /gradlew.bat
 *.iml
 /gradlew
+app/gradlew
+app/gradlew.bat
+app/local.properties
+app/.idea/.name
+app/.idea/compiler.xml
+app/.idea/gradle.xml
+app/.idea/misc.xml
+app/.idea/modules.xml
+app/.idea/runConfigurations.xml
+app/.idea/vcs.xml
+app/.idea/workspace.xml
+app/.idea/copyright/profiles_settings.xml
+app/gradle/wrapper/gradle-wrapper.jar
+app/gradle/wrapper/gradle-wrapper.properties

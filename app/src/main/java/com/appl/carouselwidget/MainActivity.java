@@ -6,6 +6,7 @@ import android.os.Bundle;
 import android.support.v4.app.NotificationCompat;
 import android.support.v7.app.ActionBarActivity;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -26,9 +27,10 @@ public class MainActivity extends ActionBarActivity {
         CoverFlowCarousel carousel = (CoverFlowCarousel)findViewById(R.id.carousel);
         final MyAdapter adapter = new MyAdapter();
         carousel.setAdapter(adapter);
-        carousel.setSelection(adapter.getCount()/2); //adapter.getCount()-1
+        carousel.setSelection(adapter.getCount() / 2); //adapter.getCount()-1
         //carousel.setSlowDownCoefficient(1);
         carousel.setSpacing(0.5f);
+        carousel.setRotationThreshold(0.3f);
 
         Button addButton = (Button)findViewById(R.id.add_botton);
         addButton.setOnClickListener(new View.OnClickListener() {
@@ -88,7 +90,7 @@ public class MainActivity extends ActionBarActivity {
         }
     }
 
-    public static class MyFrame extends FrameLayout{
+    public static class MyFrame extends FrameLayout {
         private ImageView mImageView;
 
         public void setImageResource(int resId){

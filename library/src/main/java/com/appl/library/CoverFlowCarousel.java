@@ -4,10 +4,12 @@ import android.content.Context;
 import android.graphics.*;
 import android.util.AttributeSet;
 import android.util.Log;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.ViewTreeObserver;
+import android.view.animation.DecelerateInterpolator;
 import android.widget.FrameLayout;
+import android.widget.Scroller;
 
 /**
  * @author Martin Appl
@@ -73,6 +75,17 @@ public class CoverFlowCarousel extends Carousel {
      */
     private int mReflectionOpacity = 0x70;
 
+    /**
+     * How long will alignment animation take
+     */
+    private int mAlignTime = 350;
+
+    private int mCenterItemOffset;
+    private int mReverseOrderIndex = -1;
+    private int mLastCenterItemIndex = -1;
+
+    private final Scroller mAlignScroller = new Scroller(getContext(), new DecelerateInterpolator());
+
     //reflection
     private final Matrix mReflectionMatrix = new Matrix();
     private final Paint mPaint = new Paint();
@@ -103,20 +116,30 @@ public class CoverFlowCarousel extends Carousel {
         v.setScaleY(scale);
     }
 
-    @Override
-    protected void dispatchDraw(Canvas canvas) {
-        int bitmask = Paint.FILTER_BITMAP_FLAG | Paint.ANTI_ALIAS_FLAG;
-        canvas.setDrawFilter(new PaintFlagsDrawFilter(bitmask, bitmask));
-        super.dispatchDraw(canvas);
-    }
-
 
     @Override
     public void computeScroll() {
-        super.computeScroll();
-        for(int i=0; i < getChildCount(); i++){
-            setTransformation(getChildAt(i));
+        if (mTouchState == TOUCH_STATE_ALIGN) {
+            if (mAlignScroller.computeScrollOffset()) {
+                if(mAlignScroller.getFinalX() == mAlignScroller.getCurrX()){
+                    mAlignScroller.abortAnimation();
+                    mTouchState = TOUCH_STATE_RESTING;
+                    return;
+                }
+
+                int x = mAlignScroller.getCurrX();
+                scrollTo(x, 0);
+
+                postInvalidate();
+                return;
+            }
+            else{
+                mTouchState = TOUCH_STATE_RESTING;
+                return;
+            }
         }
+
+        super.computeScroll();
     }
 
     @Override
@@ -126,24 +149,27 @@ public class CoverFlowCarousel extends Carousel {
 
     @Override
     protected View getViewFromAdapter(int position){
-        CoverFrame frame = (CoverFrame) mCache.getCachedView();
-        View recycled = null;
-        if(frame != null) {
-            recycled = frame.getChildAt(0);
-        }
+        CoverFrame finalFrame;
+        View currView = mCache.getCachedView();
+        if (currView instanceof CoverFrame) {
+            finalFrame = (CoverFrame)currView;
+            View recycled = finalFrame.getChildAt(0);
 
-        View v = mAdapter.getView(position, recycled , this);
-        if(frame == null) {
-            frame = new CoverFrame(getContext(), v);
-        } else {
-            frame.setCover(v);
+            View v = mAdapter.getView(position, recycled, this);
+
+            finalFrame.setCover(v);
+        }
+        else {
+            View v = mAdapter.getView(position, null, this);
+
+            finalFrame = new CoverFrame(getContext(), v);
         }
 
         //to enable drawing cache
-        if(android.os.Build.VERSION.SDK_INT >= 11) frame.setLayerType(LAYER_TYPE_SOFTWARE, null);
-        frame.setDrawingCacheEnabled(true);
+        if(android.os.Build.VERSION.SDK_INT >= 11) finalFrame.setLayerType(LAYER_TYPE_SOFTWARE, null);
+        finalFrame.setDrawingCacheEnabled(true);
 
-        return frame;
+        return finalFrame;
     }
 
     private float getRotationAngle(int childCenter){
@@ -198,12 +224,11 @@ public class CoverFlowCarousel extends Carousel {
     private float getChildAdjustPosition(View child) {
         final int c = getChildCenter(child);
         final float crp = getClampedRelativePosition(getRelativePosition(c), mAdjustPositionThreshold * getWidgetSizeMultiplier());
-        final float d = mChildWidth * mAdjustPositionMultiplier * mSpacing * crp * getSpacingMultiplierOnCirlce(c);
 
-        return d;
+        return mChildWidth * mAdjustPositionMultiplier * mSpacing * crp * getSpacingMultiplierOnCircle(c);
     }
 
-    private float getSpacingMultiplierOnCirlce(int childCenter){
+    private float getSpacingMultiplierOnCircle(int childCenter){
         float x = getRelativePosition(childCenter)/mRadius;
         return (float) Math.sin(Math.acos(x));
     }
@@ -247,9 +272,179 @@ public class CoverFlowCarousel extends Carousel {
         final int pwms = MeasureSpec.makeMeasureSpec(mChildWidth, MeasureSpec.EXACTLY);
         final int phms = MeasureSpec.makeMeasureSpec(mChildHeight, MeasureSpec.EXACTLY);
         measureChild(child, pwms, phms);
+
         child.setDrawingCacheEnabled(isChildrenDrawnWithCacheEnabled());
 
         return child;
+    }
+
+    @Override
+    protected boolean drawChild(Canvas canvas, View child, long drawingTime) {
+        setTransformation(child);
+
+        return super.drawChild(canvas, child, drawingTime);
+    }
+
+    @Override
+    protected void dispatchDraw(Canvas canvas) {
+        super.dispatchDraw(canvas);
+
+        //make sure we never stay unaligned after last draw in resting state
+        if(mTouchState == TOUCH_STATE_RESTING && mCenterItemOffset != 0){
+            scrollBy(mCenterItemOffset, 0);
+            postInvalidate();
+        }
+    }
+
+    @Override
+    protected boolean checkScrollPosition() {
+        Log.d("Carousel", "Test");
+        if(mCenterItemOffset != 0){
+            mAlignScroller.startScroll(getScrollX(), 0, mCenterItemOffset, 0, mAlignTime);
+            mTouchState = TOUCH_STATE_ALIGN;
+            invalidate();
+            return true;
+        }
+        return false;
+    }
+
+    @Override
+    protected int getChildDrawingOrder(int childCount, int i) {
+        final int screenCenter = getWidth()/2 + getScrollX();
+        final int myCenter = getChildCenter(i);
+        final int d = myCenter - screenCenter;
+
+        final View v = getChildAt(i);
+        final int sz = (int) (mSpacing * v.getWidth()/2f);
+
+        if(mReverseOrderIndex == -1 && (Math.abs(d) < sz || d >= 0)){
+            mReverseOrderIndex = i;
+            mCenterItemOffset = d;
+            mLastCenterItemIndex = i;
+            return childCount-1;
+        }
+
+        if(mReverseOrderIndex == -1){
+            return i;
+        }
+        else{
+            if(i == childCount-1) {
+                final int x = mReverseOrderIndex;
+                mReverseOrderIndex = -1;
+                return x;
+            }
+            return childCount - 1 - (i-mReverseOrderIndex);
+        }
+    }
+
+    private final RectF mTouchRect = new RectF();
+    private View mMotionTarget;
+    private float mTargetLeft;
+    private float mTargetTop;
+
+    @Override
+    public boolean dispatchTouchEvent(MotionEvent ev) {
+        final int action = ev.getAction();
+        final float xf = ev.getX();
+        final float yf = ev.getY();
+        final RectF frame = mTouchRect;
+
+        if (action == MotionEvent.ACTION_DOWN) {
+            if (mMotionTarget != null) {
+                // this is weird, we got a pen down, but we thought it was
+                // already down!
+                // We should probably send an ACTION_UP to the current
+                // target.
+                mMotionTarget = null;
+            }
+            // If we're disallowing intercept or if we're allowing and we didn't
+            // intercept
+            if (!onInterceptTouchEvent(ev)) {
+                // reset this event's action (just to protect ourselves)
+                ev.setAction(MotionEvent.ACTION_DOWN);
+                // We know we want to dispatch the event down, find a child
+                // who can handle it, start with the front-most child.
+
+                final int count = getChildCount();
+                final int[] childOrder = new int[count];
+
+                for(int i=0; i < count; i++){
+                    childOrder[i] = getChildDrawingOrder(count, i);
+                }
+
+                for(int i = count-1; i >= 0; i--) {
+                    final View child = getChildAt(childOrder[i]);
+                    if (child.getVisibility() == VISIBLE
+                            || child.getAnimation() != null) {
+
+                        //getScrolledTransformedChildRectangle(child, frame);
+
+                        if (frame.contains(xf, yf)) {
+                            // offset the event to the view's coordinate system
+                            final float xc = xf - frame.left;
+                            final float yc = yf - frame.top;
+                            ev.setLocation(xc, yc);
+                            if (child.dispatchTouchEvent(ev))  {
+                                // Event handled, we have a target now.
+                                mMotionTarget = child;
+                                mTargetTop =  frame.top;
+                                mTargetLeft = frame.left;
+                                return true;
+                            }
+
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        boolean isUpOrCancel = (action == MotionEvent.ACTION_UP) ||
+                (action == MotionEvent.ACTION_CANCEL);
+
+
+        // The event wasn't an ACTION_DOWN, dispatch it to our target if
+        // we have one.
+        final View target = mMotionTarget;
+        if (target == null) {
+            // We don't have a target, this means we're handling the
+            // event as a regular view.
+            ev.setLocation(xf, yf);
+            return onTouchEvent(ev);
+        }
+
+        // if have a target, see if we're allowed to and want to intercept its
+        // events
+        if (onInterceptTouchEvent(ev)) {
+            final float xc = xf - mTargetLeft;
+            final float yc = yf - mTargetTop;
+            ev.setAction(MotionEvent.ACTION_CANCEL);
+            ev.setLocation(xc, yc);
+            if (!target.dispatchTouchEvent(ev)) {
+                // target didn't handle ACTION_CANCEL. not much we can do
+                // but they should have.
+            }
+            // clear the target
+            mMotionTarget = null;
+            // Don't dispatch this event to our own view, because we already
+            // saw it when intercepting; we just want to give the following
+            // event to the normal onTouchEvent().
+            return true;
+        }
+
+        if (isUpOrCancel) {
+            mMotionTarget = null;
+            mTargetTop = -1;
+            mTargetLeft = -1;
+        }
+
+        // finally offset the event to the target's coordinate system and
+        // dispatch the event.
+        final float xc = xf - mTargetLeft;
+        final float yc = yf - mTargetTop;
+        ev.setLocation(xc, yc);
+
+        return target.dispatchTouchEvent(ev);
     }
 
     private Bitmap createReflectionBitmap(Bitmap original){
@@ -270,8 +465,6 @@ public class CoverFlowCarousel extends Carousel {
 
         return reflection;
     }
-
-
 
     private class CoverFrame extends FrameLayout {
         private Bitmap mReflectionCache;
@@ -299,22 +492,23 @@ public class CoverFlowCarousel extends Carousel {
                 parent.removeView(cover);
             }
 
-            addView(cover,lp);
+            addView(cover, lp);
         }
 
-//        @Override
-//        protected void dispatchDraw(Canvas canvas) {
-//            canvas.setDrawFilter(new PaintFlagsDrawFilter(1, Paint.ANTI_ALIAS_FLAG));
-//            super.dispatchDraw(canvas);
-//        }
-
+        /*
+        @Override
+        protected void dispatchDraw(Canvas canvas) {
+            canvas.setDrawFilter(new PaintFlagsDrawFilter(1, Paint.ANTI_ALIAS_FLAG));
+            super.dispatchDraw(canvas);
+        }
+        */
 
         @Override
         public Bitmap getDrawingCache(boolean autoScale) {
             final Bitmap b = super.getDrawingCache(autoScale);
 
             if(mReflectionCacheInvalid){
-                if(/*(mTouchState != TOUCH_STATE_FLING && mTouchState != TOUCH_STATE_ALIGN) || */mReflectionCache == null){
+                if (/*(mTouchState != TOUCH_STATE_FLING && mTouchState != TOUCH_STATE_ALIGN) ||*/ mReflectionCache == null){
                     try{
                         mReflectionCache = createReflectionBitmap(b);
                         mReflectionCacheInvalid = false;
@@ -339,5 +533,7 @@ public class CoverFlowCarousel extends Carousel {
 
     }
 
-
+    public void setRotationThreshold(float rotationThreshold) {
+        this.mRotationThreshold = rotationThreshold;
+    }
 }
