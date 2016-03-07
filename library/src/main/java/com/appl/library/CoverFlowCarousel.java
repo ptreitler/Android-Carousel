@@ -4,9 +4,9 @@ import android.content.Context;
 import android.graphics.*;
 import android.util.AttributeSet;
 import android.util.Log;
-import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewTreeObserver;
 import android.view.animation.DecelerateInterpolator;
 import android.widget.FrameLayout;
 import android.widget.Scroller;
@@ -14,7 +14,7 @@ import android.widget.Scroller;
 /**
  * @author Martin Appl
  */
-public class CoverFlowCarousel extends Carousel {
+public class CoverFlowCarousel extends Carousel implements ViewTreeObserver.OnPreDrawListener {
 
     /**
      * Widget size on which was tuning of parameters done. This value is used to scale parameters on when widgets has different size
@@ -82,7 +82,7 @@ public class CoverFlowCarousel extends Carousel {
 
     private int mCenterItemOffset;
     private int mReverseOrderIndex = -1;
-    private int mLastCenterItemIndex = -1;
+
 
     private final Scroller mAlignScroller = new Scroller(getContext(), new DecelerateInterpolator());
 
@@ -93,7 +93,7 @@ public class CoverFlowCarousel extends Carousel {
     private final PorterDuffXfermode mXfermode = new PorterDuffXfermode(PorterDuff.Mode.DST_IN);
     private final Canvas mReflectionCanvas = new Canvas();
 
-    //private boolean mInvalidated = false;
+    private boolean mInvalidated = false;
 
     public CoverFlowCarousel(Context context) {
         super(context);
@@ -279,14 +279,11 @@ public class CoverFlowCarousel extends Carousel {
     }
 
     @Override
-    protected boolean drawChild(Canvas canvas, View child, long drawingTime) {
-        setTransformation(child);
-
-        return super.drawChild(canvas, child, drawingTime);
-    }
-
-    @Override
     protected void dispatchDraw(Canvas canvas) {
+        mInvalidated = false;
+
+        mReverseOrderIndex = -1;
+
         super.dispatchDraw(canvas);
 
         //make sure we never stay unaligned after last draw in resting state
@@ -296,9 +293,18 @@ public class CoverFlowCarousel extends Carousel {
         }
     }
 
+      @Override
+        public boolean onPreDraw() {
+            if(!mInvalidated){
+            mInvalidated = true;
+            invalidate();
+            return false;
+        }
+        return true;
+    }
+
     @Override
     protected boolean checkScrollPosition() {
-        Log.d("Carousel", "Test");
         if(mCenterItemOffset != 0){
             mAlignScroller.startScroll(getScrollX(), 0, mCenterItemOffset, 0, mAlignTime);
             mTouchState = TOUCH_STATE_ALIGN;
@@ -306,6 +312,13 @@ public class CoverFlowCarousel extends Carousel {
             return true;
         }
         return false;
+    }
+
+    @Override
+    protected boolean drawChild(Canvas canvas, View child, long drawingTime) {
+        setTransformation(child);
+
+        return super.drawChild(canvas, child, drawingTime);
     }
 
     @Override
@@ -320,131 +333,10 @@ public class CoverFlowCarousel extends Carousel {
         if(mReverseOrderIndex == -1 && (Math.abs(d) < sz || d >= 0)){
             mReverseOrderIndex = i;
             mCenterItemOffset = d;
-            mLastCenterItemIndex = i;
-            return childCount-1;
+            return childCount - 1;
         }
 
-        if(mReverseOrderIndex == -1){
-            return i;
-        }
-        else{
-            if(i == childCount-1) {
-                final int x = mReverseOrderIndex;
-                mReverseOrderIndex = -1;
-                return x;
-            }
-            return childCount - 1 - (i-mReverseOrderIndex);
-        }
-    }
-
-    private final RectF mTouchRect = new RectF();
-    private View mMotionTarget;
-    private float mTargetLeft;
-    private float mTargetTop;
-
-    @Override
-    public boolean dispatchTouchEvent(MotionEvent ev) {
-        final int action = ev.getAction();
-        final float xf = ev.getX();
-        final float yf = ev.getY();
-        final RectF frame = mTouchRect;
-
-        if (action == MotionEvent.ACTION_DOWN) {
-            if (mMotionTarget != null) {
-                // this is weird, we got a pen down, but we thought it was
-                // already down!
-                // We should probably send an ACTION_UP to the current
-                // target.
-                mMotionTarget = null;
-            }
-            // If we're disallowing intercept or if we're allowing and we didn't
-            // intercept
-            if (!onInterceptTouchEvent(ev)) {
-                // reset this event's action (just to protect ourselves)
-                ev.setAction(MotionEvent.ACTION_DOWN);
-                // We know we want to dispatch the event down, find a child
-                // who can handle it, start with the front-most child.
-
-                final int count = getChildCount();
-                final int[] childOrder = new int[count];
-
-                for(int i=0; i < count; i++){
-                    childOrder[i] = getChildDrawingOrder(count, i);
-                }
-
-                for(int i = count-1; i >= 0; i--) {
-                    final View child = getChildAt(childOrder[i]);
-                    if (child.getVisibility() == VISIBLE
-                            || child.getAnimation() != null) {
-
-                        //getScrolledTransformedChildRectangle(child, frame);
-
-                        if (frame.contains(xf, yf)) {
-                            // offset the event to the view's coordinate system
-                            final float xc = xf - frame.left;
-                            final float yc = yf - frame.top;
-                            ev.setLocation(xc, yc);
-                            if (child.dispatchTouchEvent(ev))  {
-                                // Event handled, we have a target now.
-                                mMotionTarget = child;
-                                mTargetTop =  frame.top;
-                                mTargetLeft = frame.left;
-                                return true;
-                            }
-
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-
-        boolean isUpOrCancel = (action == MotionEvent.ACTION_UP) ||
-                (action == MotionEvent.ACTION_CANCEL);
-
-
-        // The event wasn't an ACTION_DOWN, dispatch it to our target if
-        // we have one.
-        final View target = mMotionTarget;
-        if (target == null) {
-            // We don't have a target, this means we're handling the
-            // event as a regular view.
-            ev.setLocation(xf, yf);
-            return onTouchEvent(ev);
-        }
-
-        // if have a target, see if we're allowed to and want to intercept its
-        // events
-        if (onInterceptTouchEvent(ev)) {
-            final float xc = xf - mTargetLeft;
-            final float yc = yf - mTargetTop;
-            ev.setAction(MotionEvent.ACTION_CANCEL);
-            ev.setLocation(xc, yc);
-            if (!target.dispatchTouchEvent(ev)) {
-                // target didn't handle ACTION_CANCEL. not much we can do
-                // but they should have.
-            }
-            // clear the target
-            mMotionTarget = null;
-            // Don't dispatch this event to our own view, because we already
-            // saw it when intercepting; we just want to give the following
-            // event to the normal onTouchEvent().
-            return true;
-        }
-
-        if (isUpOrCancel) {
-            mMotionTarget = null;
-            mTargetTop = -1;
-            mTargetLeft = -1;
-        }
-
-        // finally offset the event to the target's coordinate system and
-        // dispatch the event.
-        final float xc = xf - mTargetLeft;
-        final float yc = yf - mTargetTop;
-        ev.setLocation(xc, yc);
-
-        return target.dispatchTouchEvent(ev);
+        return super.getChildDrawingOrder(childCount, i);
     }
 
     private Bitmap createReflectionBitmap(Bitmap original){
