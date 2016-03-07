@@ -763,7 +763,7 @@ public class Carousel extends ViewGroup {
 
     private void enableChildrenCache() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            setLayerType(LAYER_TYPE_SOFTWARE, null);
+            setLayerType(LAYER_TYPE_HARDWARE, null);
             setChildrenDrawingCacheEnabled(true);
             mChildrenCacheState = true;
         }
@@ -779,7 +779,7 @@ public class Carousel extends ViewGroup {
             mChildrenCacheState = false;
         }
         else {
-            setChildrenDrawnWithCacheEnabled(true);
+            setChildrenDrawnWithCacheEnabled(false);
         }
     }
 
@@ -803,6 +803,10 @@ public class Carousel extends ViewGroup {
     public void setChildHeight(int height) {
         mChildHeight = height;
     }
+
+    public int getChildWidth() { return mChildWidth; }
+
+    public int getChildHeight() { return mChildHeight; }
 
     public void setSlowDownCoefficient(int c) {
         if(c < 1) throw new IllegalArgumentException("Slowdown coeficient must be greater than 0");

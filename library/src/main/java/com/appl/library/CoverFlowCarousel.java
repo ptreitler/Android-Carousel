@@ -165,7 +165,7 @@ public class CoverFlowCarousel extends Carousel {
         }
 
         //to enable drawing cache
-        if(android.os.Build.VERSION.SDK_INT >= 11) finalFrame.setLayerType(LAYER_TYPE_SOFTWARE, null);
+        if(android.os.Build.VERSION.SDK_INT >= 11) finalFrame.setLayerType(LAYER_TYPE_HARDWARE, null);
         finalFrame.setDrawingCacheEnabled(true);
 
         return finalFrame;
