@@ -425,8 +425,15 @@ public class CoverFlowCarousel extends Carousel implements ViewTreeObserver.OnPr
 
     }
 
-    /* Method that allows to change global rotation */
+    public void setMaxScaleFactor(float maxScaleFactor) {
+        mMaxScaleFactor = maxScaleFactor;
+    }
+    
     public void setRotationThreshold(float rotationThreshold) {
-        this.mRotationThreshold = rotationThreshold;
+        mRotationThreshold = rotationThreshold;
+    }
+
+    public void setMaxRotationAngle(int maxRotationAngle) {
+        mMaxRotationAngle = maxRotationAngle;
     }
 }
