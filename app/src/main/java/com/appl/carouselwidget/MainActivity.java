@@ -5,6 +5,7 @@ import android.graphics.Color;
 import android.os.Bundle;
 import android.support.v4.app.NotificationCompat;
 import android.support.v7.app.ActionBarActivity;
+import android.support.v7.app.AppCompatActivity;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.view.Menu;
@@ -17,14 +18,16 @@ import com.appl.library.Carousel;
 import com.appl.library.CoverFlowCarousel;
 
 
-public class MainActivity extends ActionBarActivity {
+public class MainActivity extends AppCompatActivity {
+
+    CoverFlowCarousel carousel;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        CoverFlowCarousel carousel = (CoverFlowCarousel)findViewById(R.id.carousel);
+        carousel = (CoverFlowCarousel)findViewById(R.id.carousel);
         final MyAdapter adapter = new MyAdapter();
         carousel.setAdapter(adapter);
         carousel.setSelection(adapter.getCount() / 2); //adapter.getCount()-1
@@ -76,6 +79,7 @@ public class MainActivity extends ActionBarActivity {
             v.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
+                    carousel.scrollToItemPosition(position);
                     Toast.makeText(MainActivity.this, "clicked position:"+position,Toast.LENGTH_SHORT).show();
                 }
             });

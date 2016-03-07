@@ -6,6 +6,7 @@ import java.util.LinkedList;
 import android.content.Context;
 import android.database.DataSetObserver;
 import android.graphics.Canvas;
+import android.os.Build;
 import android.util.AttributeSet;
 import android.view.*;
 import android.widget.Adapter;
@@ -51,6 +52,8 @@ public class Carousel extends ViewGroup {
     private int mMinimumVelocity;
     private int mMaximumVelocity;
     private float mLastMotionX;
+
+    private boolean mChildrenCacheState = false;
 
     protected int mTouchState = TOUCH_STATE_RESTING;
 
@@ -312,7 +315,7 @@ public class Carousel extends ViewGroup {
         final int pwms = MeasureSpec.makeMeasureSpec(mChildWidth, MeasureSpec.EXACTLY);
         final int phms = MeasureSpec.makeMeasureSpec(mChildHeight, MeasureSpec.EXACTLY);
         measureChild(child, pwms, phms);
-        child.setDrawingCacheEnabled(isChildrenDrawnWithCacheEnabled());
+        child.setDrawingCacheEnabled(isChildrenCached());
 
         return child;
     }
@@ -759,12 +762,29 @@ public class Carousel extends ViewGroup {
     }
 
     private void enableChildrenCache() {
-        setChildrenDrawnWithCacheEnabled(true);
-        setChildrenDrawingCacheEnabled(true);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            setLayerType(LAYER_TYPE_SOFTWARE, null);
+            setChildrenDrawingCacheEnabled(true);
+            mChildrenCacheState = true;
+        }
+        else {
+            setChildrenDrawnWithCacheEnabled(true);
+        }
     }
 
     private void clearChildrenCache() {
-        setChildrenDrawnWithCacheEnabled(false);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            setLayerType(LAYER_TYPE_NONE, null);
+            setChildrenDrawingCacheEnabled(false);
+            mChildrenCacheState = false;
+        }
+        else {
+            setChildrenDrawnWithCacheEnabled(true);
+        }
+    }
+
+    public boolean isChildrenCached() {
+        return mChildrenCacheState;
     }
 
     /**

@@ -2,6 +2,7 @@ package com.appl.library;
 
 import android.content.Context;
 import android.graphics.*;
+import android.os.Build;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.view.View;
@@ -14,7 +15,7 @@ import android.widget.Scroller;
 /**
  * @author Martin Appl
  */
-public class CoverFlowCarousel extends Carousel implements ViewTreeObserver.OnPreDrawListener {
+public class CoverFlowCarousel extends Carousel {
 
     /**
      * Widget size on which was tuning of parameters done. This value is used to scale parameters on when widgets has different size
@@ -81,8 +82,8 @@ public class CoverFlowCarousel extends Carousel implements ViewTreeObserver.OnPr
     private int mAlignTime = 350;
 
     private int mCenterItemOffset;
-    private int mReverseOrderIndex = -1;
 
+    private int mReverseOrderIndex = -1;
 
     private final Scroller mAlignScroller = new Scroller(getContext(), new DecelerateInterpolator());
 
@@ -92,8 +93,6 @@ public class CoverFlowCarousel extends Carousel implements ViewTreeObserver.OnPr
     //private final Paint mReflectionPaint = new Paint();
     private final PorterDuffXfermode mXfermode = new PorterDuffXfermode(PorterDuff.Mode.DST_IN);
     private final Canvas mReflectionCanvas = new Canvas();
-
-    private boolean mInvalidated = false;
 
     public CoverFlowCarousel(Context context) {
         super(context);
@@ -273,38 +272,32 @@ public class CoverFlowCarousel extends Carousel implements ViewTreeObserver.OnPr
         final int phms = MeasureSpec.makeMeasureSpec(mChildHeight, MeasureSpec.EXACTLY);
         measureChild(child, pwms, phms);
 
-        child.setDrawingCacheEnabled(isChildrenDrawnWithCacheEnabled());
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            child.setDrawingCacheEnabled(isChildrenCached());
+        }
+        else {
+            child.setDrawingCacheEnabled(isChildrenDrawnWithCacheEnabled());
+        }
 
         return child;
     }
 
     @Override
     protected void dispatchDraw(Canvas canvas) {
-        mInvalidated = false;
-
         mReverseOrderIndex = -1;
 
         super.dispatchDraw(canvas);
 
         //make sure we never stay unaligned after last draw in resting state
-        if(mTouchState == TOUCH_STATE_RESTING && mCenterItemOffset != 0){
+        if(mTouchState == TOUCH_STATE_RESTING && mCenterItemOffset != 0) {
             scrollBy(mCenterItemOffset, 0);
             postInvalidate();
         }
     }
 
-      @Override
-        public boolean onPreDraw() {
-            if(!mInvalidated){
-            mInvalidated = true;
-            invalidate();
-            return false;
-        }
-        return true;
-    }
-
     @Override
     protected boolean checkScrollPosition() {
+        //Log.d("Carousel", "CheckScrollPosition");
         if(mCenterItemOffset != 0){
             mAlignScroller.startScroll(getScrollX(), 0, mCenterItemOffset, 0, mAlignTime);
             mTouchState = TOUCH_STATE_ALIGN;
@@ -323,7 +316,7 @@ public class CoverFlowCarousel extends Carousel implements ViewTreeObserver.OnPr
 
     @Override
     protected int getChildDrawingOrder(int childCount, int i) {
-        final int screenCenter = getWidth()/2 + getScrollX();
+        final int screenCenter = getWidth() / 2 + getScrollX();
         final int myCenter = getChildCenter(i);
         final int d = myCenter - screenCenter;
 
@@ -428,12 +421,28 @@ public class CoverFlowCarousel extends Carousel implements ViewTreeObserver.OnPr
     public void setMaxScaleFactor(float maxScaleFactor) {
         mMaxScaleFactor = maxScaleFactor;
     }
-    
+
     public void setRotationThreshold(float rotationThreshold) {
         mRotationThreshold = rotationThreshold;
     }
 
     public void setMaxRotationAngle(int maxRotationAngle) {
         mMaxRotationAngle = maxRotationAngle;
+    }
+
+    public void scrollToItemPosition(int position) {
+        int newItemOffset;
+        if (position > getSelection()) {
+            newItemOffset =  (mChildWidth / 2) * (position - getSelection());
+        }
+        else if (position < getSelection()) {
+            newItemOffset =  -(mChildWidth / 2) * (getSelection() - position);
+        }
+        else {
+            return;
+        }
+
+        mCenterItemOffset = newItemOffset;
+        checkScrollPosition();
     }
 }
