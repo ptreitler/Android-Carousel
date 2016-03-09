@@ -364,11 +364,13 @@ public class Carousel extends ViewGroup {
         mFirstVisibleChild = mSelection;
         mLastVisibleChild = mSelection;
 
-        if (mLastVisibleChild == mAdapter.getCount() - 1) {
-            mRightEdge = right;
-        }
-        if (mFirstVisibleChild == 0) {
-            mLeftEdge = selectedLeft;
+        if (!mShouldRepeat) {
+            if (mLastVisibleChild == mAdapter.getCount() - 1) {
+                mRightEdge = right;
+            }
+            if (mFirstVisibleChild == 0) {
+                mLeftEdge = selectedLeft;
+            }
         }
 
         refill();
