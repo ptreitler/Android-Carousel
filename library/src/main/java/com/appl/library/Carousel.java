@@ -8,6 +8,7 @@ import android.database.DataSetObserver;
 import android.graphics.Canvas;
 import android.os.Build;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.view.*;
 import android.widget.Adapter;
 import android.widget.Scroller;
@@ -45,6 +46,8 @@ public class Carousel extends ViewGroup {
 
     /** Aligning in progress */
     protected static final int TOUCH_STATE_ALIGN = 3;
+
+    protected boolean mShouldRepeat = false;
 
     private final Scroller mScroller = new Scroller(getContext());
     private VelocityTracker mVelocityTracker;
@@ -149,6 +152,14 @@ public class Carousel extends ViewGroup {
         mSelection = position;
 
         reset();
+    }
+
+    public void shouldRepeat(boolean repeat) {
+        mShouldRepeat = repeat;
+    }
+
+    public boolean isRepeating() {
+        return mShouldRepeat;
     }
 
     @Override
@@ -389,8 +400,6 @@ public class Carousel extends ViewGroup {
 
     /**
      * Checks and refills empty area on the left
-     *
-     * @return firstItemPosition
      */
     protected void refillRightToLeft(final int leftScreenEdge) {
         if (getChildCount() == 0) return;
@@ -399,28 +408,48 @@ public class Carousel extends ViewGroup {
         int childRight = child.getRight();
         int newRight = childRight - (int)(mChildWidth * mSpacing);
 
-        while (newRight - getPartOfViewCoveredBySibling() > leftScreenEdge && mFirstVisibleChild > 0) {
-            mFirstVisibleChild--;
+        if (mShouldRepeat) {
+            while (newRight - getPartOfViewCoveredBySibling() > leftScreenEdge && mFirstVisibleChild >= 0) {
+                if(mFirstVisibleChild <= 0){
+                    mFirstVisibleChild = mAdapter.getCount();
+                }
 
-            child = getViewFromAdapter(mFirstVisibleChild);
-            child.setSelected(false);
-            mReverseOrderIndex++;
+                mFirstVisibleChild--;
 
-            addAndMeasureChild(child, LAYOUT_MODE_TO_BEFORE);
-            newRight = layoutChildToBefore(child, newRight);
+                child = getViewFromAdapter(mFirstVisibleChild);
+                child.setSelected(false);
+                mReverseOrderIndex++;
 
-            if (mFirstVisibleChild <= 0) {
-                mLeftEdge = child.getLeft();
+                addAndMeasureChild(child, LAYOUT_MODE_TO_BEFORE);
+                newRight = layoutChildToBefore(child, newRight);
+
+                if (!mShouldRepeat && mFirstVisibleChild <= 0) {
+                    mLeftEdge = child.getLeft();
+                }
             }
         }
-        return;
+        else {
+            while (newRight - getPartOfViewCoveredBySibling() > leftScreenEdge && mFirstVisibleChild > 0) {
+                mFirstVisibleChild--;
+
+                child = getViewFromAdapter(mFirstVisibleChild);
+                child.setSelected(false);
+                mReverseOrderIndex++;
+
+                addAndMeasureChild(child, LAYOUT_MODE_TO_BEFORE);
+                newRight = layoutChildToBefore(child, newRight);
+
+                if (!mShouldRepeat && mFirstVisibleChild <= 0) {
+                    mLeftEdge = child.getLeft();
+                }
+            }
+        }
     }
 
     /**
      * Checks and refills empty area on the right
      */
     protected void refillLeftToRight(final int leftScreenEdge, final int rightScreenEdge) {
-
         View child;
         int newLeft;
 
@@ -428,18 +457,40 @@ public class Carousel extends ViewGroup {
         int childLeft = child.getLeft();
         newLeft = childLeft + (int)(mChildWidth * mSpacing);
 
-        while (newLeft + getPartOfViewCoveredBySibling() < rightScreenEdge && mLastVisibleChild < mAdapter
-            .getCount() - 1) {
-            mLastVisibleChild++;
+        if (mShouldRepeat) {
+            while (newLeft + getPartOfViewCoveredBySibling() < rightScreenEdge && mLastVisibleChild <= mAdapter
+                    .getCount() - 1) {
+                if(mLastVisibleChild >= mAdapter.getCount() - 1){
+                    mLastVisibleChild = -1;
+                }
 
-            child = getViewFromAdapter(mLastVisibleChild);
-            child.setSelected(false);
+                mLastVisibleChild++;
 
-            addAndMeasureChild(child, LAYOUT_MODE_AFTER);
-            newLeft = layoutChild(child, newLeft);
+                child = getViewFromAdapter(mLastVisibleChild);
+                child.setSelected(false);
 
-            if (mLastVisibleChild >= mAdapter.getCount() - 1) {
-                mRightEdge = child.getRight();
+                addAndMeasureChild(child, LAYOUT_MODE_AFTER);
+                newLeft = layoutChild(child, newLeft);
+
+                if (!mShouldRepeat && mLastVisibleChild >= mAdapter.getCount() - 1) {
+                    mRightEdge = child.getRight();
+                }
+            }
+        }
+        else {
+            while (newLeft + getPartOfViewCoveredBySibling() < rightScreenEdge && mLastVisibleChild < mAdapter
+                    .getCount() - 1) {
+                mLastVisibleChild++;
+
+                child = getViewFromAdapter(mLastVisibleChild);
+                child.setSelected(false);
+
+                addAndMeasureChild(child, LAYOUT_MODE_AFTER);
+                newLeft = layoutChild(child, newLeft);
+
+                if (!mShouldRepeat && mLastVisibleChild >= mAdapter.getCount() - 1) {
+                    mRightEdge = child.getRight();
+                }
             }
         }
     }
@@ -455,7 +506,6 @@ public class Carousel extends ViewGroup {
         View firstChild = getChildAt(0);
 
         while (firstChild != null && firstChild.getLeft()+(mChildWidth * mSpacing)  < leftScreenEdge && getChildCount() > 1) {
-
             // remove view
             removeViewsInLayout(0, 1);
 
@@ -494,7 +544,15 @@ public class Carousel extends ViewGroup {
 
             mCache.cacheView(lastChild);
 
-            mLastVisibleChild--;
+            if (!mShouldRepeat) {
+                mLastVisibleChild--;
+            }
+            else {
+                if (mLastVisibleChild >= 0) {
+                    mLastVisibleChild--;
+                }
+            }
+
             if (getChildCount() - 1 == mReverseOrderIndex) {
                 break;
             }
@@ -531,7 +589,6 @@ public class Carousel extends ViewGroup {
         } else {
             return childCount - 1 - (i - mReverseOrderIndex);
         }
-
     }
 
     @Override
@@ -774,7 +831,7 @@ public class Carousel extends ViewGroup {
 
     private void clearChildrenCache() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            setLayerType(LAYER_TYPE_NONE, null);
+            setLayerType(LAYER_TYPE_HARDWARE, null);
             setChildrenDrawingCacheEnabled(false);
             mChildrenCacheState = false;
         }

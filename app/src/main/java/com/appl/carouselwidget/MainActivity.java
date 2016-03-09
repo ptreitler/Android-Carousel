@@ -3,18 +3,11 @@ package com.appl.carouselwidget;
 import android.content.Context;
 import android.graphics.Color;
 import android.os.Bundle;
-import android.support.v4.app.NotificationCompat;
-import android.support.v7.app.ActionBarActivity;
 import android.support.v7.app.AppCompatActivity;
-import android.util.AttributeSet;
-import android.util.Log;
-import android.view.Menu;
-import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.*;
 
-import com.appl.library.Carousel;
 import com.appl.library.CoverFlowCarousel;
 
 
@@ -30,18 +23,25 @@ public class MainActivity extends AppCompatActivity {
         carousel = (CoverFlowCarousel)findViewById(R.id.carousel);
         final MyAdapter adapter = new MyAdapter();
         carousel.setAdapter(adapter);
-        carousel.setSelection(adapter.getCount() / 2); //adapter.getCount()-1
+        carousel.setSelection(adapter.getCount() / 2);
         //carousel.setSlowDownCoefficient(1);
         carousel.setSpacing(0.5f);
         carousel.setRotationThreshold(0.3f);
+        carousel.shouldRepeat(true); //When not using repeat, I suggest replacing getCount() below = mCount along with getItem = mResourceIds[position % mResourceIds.length].
 
+        //Pointless to add a view when we are repeating.
         Button addButton = (Button)findViewById(R.id.add_botton);
-        addButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                adapter.addView();
-            }
-        });
+        if (!carousel.isRepeating()) {
+            addButton.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    adapter.addView();
+                }
+            });
+        }
+        else {
+            addButton.setVisibility(View.GONE);
+        }
     }
 
 
@@ -53,12 +53,12 @@ public class MainActivity extends AppCompatActivity {
 
         @Override
         public int getCount() {
-            return mCount;
+            return mResourceIds.length;
         }
 
         @Override
         public Object getItem(int position) {
-            return mResourceIds[position % mResourceIds.length];
+            return position;
         }
 
         @Override
@@ -79,7 +79,7 @@ public class MainActivity extends AppCompatActivity {
             v.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
-                    carousel.scrollToItemPosition(position);
+                    //carousel.scrollToItemPosition(position);
                     Toast.makeText(MainActivity.this, "clicked position:"+position,Toast.LENGTH_SHORT).show();
                 }
             });

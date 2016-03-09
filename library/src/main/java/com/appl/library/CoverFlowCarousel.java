@@ -246,11 +246,8 @@ public class CoverFlowCarousel extends Carousel {
     }
 
     private float getChildCircularPathZOffset(int center){
-
         final float v = getOffsetOnCircle(center);
-        final float z = mPerspectiveMultiplier * v;
-
-        return  z;
+        return mPerspectiveMultiplier * v;
     }
 
     /**
@@ -418,18 +415,6 @@ public class CoverFlowCarousel extends Carousel {
 
     }
 
-    public void setMaxScaleFactor(float maxScaleFactor) {
-        mMaxScaleFactor = maxScaleFactor;
-    }
-
-    public void setRotationThreshold(float rotationThreshold) {
-        mRotationThreshold = rotationThreshold;
-    }
-
-    public void setMaxRotationAngle(int maxRotationAngle) {
-        mMaxRotationAngle = maxRotationAngle;
-    }
-
     public void scrollToItemPosition(int position) {
         int newItemOffset;
         if (position > getSelection()) {
@@ -444,5 +429,17 @@ public class CoverFlowCarousel extends Carousel {
 
         mCenterItemOffset = newItemOffset;
         checkScrollPosition();
+    }
+
+    public void setMaxScaleFactor(float maxScaleFactor) {
+        mMaxScaleFactor = maxScaleFactor;
+    }
+
+    public void setRotationThreshold(float rotationThreshold) {
+        mRotationThreshold = rotationThreshold;
+    }
+
+    public void setMaxRotationAngle(int maxRotationAngle) {
+        mMaxRotationAngle = maxRotationAngle;
     }
 }
