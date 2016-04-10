@@ -412,11 +412,14 @@ public class Carousel extends ViewGroup {
 
         if (mShouldRepeat) {
             while (newRight - getPartOfViewCoveredBySibling() > leftScreenEdge && mFirstVisibleChild >= 0) {
-                if(mFirstVisibleChild <= 0){
-                    mFirstVisibleChild = mAdapter.getCount();
-                }
-
                 mFirstVisibleChild--;
+
+                if(mFirstVisibleChild < 0){
+                    mFirstVisibleChild = mAdapter.getCount() - 1;
+                }
+                else if (mFirstVisibleChild >= mAdapter.getCount()) {
+                    mFirstVisibleChild = mAdapter.getCount() - 1;
+                }
 
                 child = getViewFromAdapter(mFirstVisibleChild);
                 child.setSelected(false);
