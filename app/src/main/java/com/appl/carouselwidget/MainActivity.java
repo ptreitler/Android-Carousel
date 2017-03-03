@@ -1,11 +1,15 @@
 package com.appl.carouselwidget;
 
 import android.content.Context;
+import android.content.res.Configuration;
 import android.graphics.Color;
+import android.graphics.Point;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
+import android.util.DisplayMetrics;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.WindowManager;
 import android.widget.*;
 
 import com.appl.library.CoverFlowCarousel;
@@ -21,13 +25,44 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         carousel = (CoverFlowCarousel)findViewById(R.id.carousel);
+
+        WindowManager wm= getWindowManager();
+
+        DisplayMetrics dm=new DisplayMetrics();
+         wm.getDefaultDisplay().getMetrics(dm);
+        int widthPixels= (int)dm.widthPixels;//(int)dm.xdpi;
+        int heightPixels=dm.heightPixels;//(int)dm.ydpi;//
+        int destDpi=dm.densityDpi;
+        float dest=dm.density;
+
+        int dpWidth=widthPixels/(int)dest;
+        int dpHeight=heightPixels/(int)dest;
+
+        Toast.makeText(this,"width(pix):"+dpWidth+", height(pix):"+dpHeight+", densitydpi:"+destDpi+",desity:"+dest,Toast.LENGTH_LONG).show();
+
+
         final MyAdapter adapter = new MyAdapter();
         carousel.setAdapter(adapter);
-        carousel.setSelection(adapter.getCount() / 2);
-        //carousel.setSlowDownCoefficient(1);
-        carousel.setSpacing(0.5f);
-        carousel.setRotationThreshold(0.3f);
-        carousel.shouldRepeat(true); //When not using repeat, I suggest replacing getCount() below = mCount along with getItem = mResourceIds[position % mResourceIds.length].
+        carousel.setSelection(adapter.getCount() / 2);//设置默认选择的视图索引
+        carousel.setSlowDownCoefficient(3); //数字越大,滚动速度越慢
+        carousel.setSpacing(0.5f);//设置每个视图之间的间距,数值越小,被中间视图遮挡的部分越多
+        carousel.setRotationThreshold(5f);//设置除中间试图外的其他视图的透视比例,数字越大,靠近中间的边越高,原理中间的边越小,数字越小,靠近中间的边越小,远离中间的边越大.
+        carousel.shouldRepeat(true); //是否循环显示视图,如果否,则滑动到最左侧的视图就只能再往回滑动 //When not using repeat, I suggest replacing getCount() below = mCount along with getItem = mResourceIds[position % mResourceIds.length].
+
+
+        Configuration mconfig=getResources().getConfiguration();
+        int ori=mconfig.orientation;
+        if(ori==mconfig.ORIENTATION_LANDSCAPE){
+            //横屏
+            carousel.setChildHeight((heightPixels*11/20));
+            //carousel.setChildWidth(widthPixels*11/20);
+        }else{
+            //竖屏
+            carousel.setChildHeight((heightPixels*11/20));
+            carousel.setChildWidth(widthPixels*11/20);
+        }
+
+
 
         //Pointless to add a view when we are repeating.
         Button addButton = (Button)findViewById(R.id.add_botton);
@@ -108,6 +143,7 @@ public class MainActivity extends AppCompatActivity {
             mImageView.setScaleType(ImageView.ScaleType.FIT_XY);
             addView(mImageView);
 
+           // setBackgroundColor(Color.TRANSPARENT);
             setBackgroundColor(Color.WHITE);
             setSelected(false);
         }
