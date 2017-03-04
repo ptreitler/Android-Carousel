@@ -2,8 +2,17 @@ package com.appl.carouselwidget;
 
 import android.content.Context;
 import android.content.res.Configuration;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.LinearGradient;
+import android.graphics.Matrix;
+import android.graphics.Paint;
 import android.graphics.Point;
+import android.graphics.PorterDuff;
+import android.graphics.PorterDuffXfermode;
+import android.graphics.Shader;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.util.DisplayMetrics;
@@ -131,6 +140,13 @@ public class MainActivity extends AppCompatActivity {
 
     public static class MyFrame extends FrameLayout {
         private ImageView mImageView;
+        private View mContentView;
+        protected boolean mHasReflection = true;
+        private static int REFHEIGHT = -1;
+        public static Paint RefPaint = null;
+
+        private Bitmap mReflectBitmap;
+        private Canvas mReflectCanvas;
 
         public void setImageResource(int resId){
             mImageView.setImageResource(resId);
@@ -141,13 +157,36 @@ public class MainActivity extends AppCompatActivity {
 
             mImageView = new ImageView(context);
             mImageView.setScaleType(ImageView.ScaleType.FIT_XY);
-            addView(mImageView);
+           // addView(mImageView);
+            setContentView(mImageView);
 
            // setBackgroundColor(Color.TRANSPARENT);
             setBackgroundColor(Color.WHITE);
             setSelected(false);
+
+//            if (REFHEIGHT == -1)
+//                REFHEIGHT = 100;
+//            if (RefPaint == null) {
+//                RefPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+//                RefPaint.setShader(new LinearGradient(0, 0, 0, REFHEIGHT, new int[] { 0x77000000, 0x66AAAAAA, 0x0500000, 0x00000000 }, new float[] { 0.0f, 0.1f, 0.9f, 1.0f }, Shader.TileMode.CLAMP));
+//                RefPaint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.DST_IN));
+//            }
         }
 
+        public void setContentView(View view) {
+//            FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
+//            lp.bottomMargin = REFHEIGHT;
+            mContentView = view;
+          //  addView(view, lp);
+            addView(mImageView);
+        }
+        public View getContentView() {
+            return mContentView;
+        }
+
+        public void setReflection(boolean ref) {
+            mHasReflection = ref;
+        }
         @Override
         public void setSelected(boolean selected) {
             super.setSelected(selected);
@@ -158,5 +197,17 @@ public class MainActivity extends AppCompatActivity {
                 mImageView.setAlpha(0.5f);
             }
         }
+        public static Bitmap convertViewToBitmap(View view)
+        {
+            view.measure(MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED),
+                    MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED));
+            view.layout(0, 0, view.getMeasuredWidth(), view.getMeasuredHeight());
+            view.buildDrawingCache();
+            Bitmap bitmap = view.getDrawingCache();
+            return bitmap;
+        }
+
+
+
     }
 }

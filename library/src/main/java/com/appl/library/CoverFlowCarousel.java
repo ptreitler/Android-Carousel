@@ -66,15 +66,9 @@ public class CoverFlowCarousel extends Carousel {
      */
     private float mPerspectiveMultiplier = 1f;
 
-    /**
-     * Size of reflection as a fraction of original image (0-1)
-     */
-    private float mReflectionHeight = 0.5f;
 
-    /**
-     * Starting opacity of reflection. Reflection fades from this value to transparency;
-     */
-    private int mReflectionOpacity = 0x70;
+
+
 
     /**
      * How long will alignment animation take
@@ -87,12 +81,8 @@ public class CoverFlowCarousel extends Carousel {
 
     private final Scroller mAlignScroller = new Scroller(getContext(), new DecelerateInterpolator());
 
-    //reflection
-    private final Matrix mReflectionMatrix = new Matrix();
-    private final Paint mPaint = new Paint();
-    //private final Paint mReflectionPaint = new Paint();
-    private final PorterDuffXfermode mXfermode = new PorterDuffXfermode(PorterDuff.Mode.DST_IN);
-    private final Canvas mReflectionCanvas = new Canvas();
+
+
 
     public CoverFlowCarousel(Context context) {
         super(context);
@@ -308,6 +298,8 @@ public class CoverFlowCarousel extends Carousel {
     protected boolean drawChild(Canvas canvas, View child, long drawingTime) {
         setTransformation(child);
 
+
+
         return super.drawChild(canvas, child, drawingTime);
     }
 
@@ -329,91 +321,9 @@ public class CoverFlowCarousel extends Carousel {
         return super.getChildDrawingOrder(childCount, i);
     }
 
-    private Bitmap createReflectionBitmap(Bitmap original){
-        final int w = original.getWidth();
-        final int h = original.getHeight();
-        final int rh = (int) (h * mReflectionHeight);
-        final int gradientColor = Color.argb(mReflectionOpacity, 0xff, 0xff, 0xff);
-
-        final Bitmap reflection = Bitmap.createBitmap(original, 0, rh, w, rh, mReflectionMatrix, false);
-
-        final LinearGradient shader = new LinearGradient(0, 0, 0, reflection.getHeight(), gradientColor, 0x00ffffff, Shader.TileMode.CLAMP);
-        mPaint.reset();
-        mPaint.setShader(shader);
-        mPaint.setXfermode(mXfermode);
-
-        mReflectionCanvas.setBitmap(reflection);
-        mReflectionCanvas.drawRect(0, 0, reflection.getWidth(), reflection.getHeight(), mPaint);
-
-        return reflection;
-    }
-
-    private class CoverFrame extends FrameLayout {
-        private Bitmap mReflectionCache;
-        private boolean mReflectionCacheInvalid = false;
 
 
-        public CoverFrame(Context context, View cover) {
-            super(context);
-            setCover(cover);
-        }
 
-        public void setCover(View cover){
-            removeAllViews();
-            //mReflectionCacheInvalid = true; //todo uncomment after adding support for reflection
-            if(cover.getLayoutParams() != null) setLayoutParams(cover.getLayoutParams());
-
-            final FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT);
-            lp.leftMargin = 1;
-            lp.topMargin = 1;
-            lp.rightMargin = 1;
-            lp.bottomMargin = 1;
-
-            if (cover.getParent()!=null && cover.getParent() instanceof ViewGroup) {
-                ViewGroup parent = (ViewGroup) cover.getParent();
-                parent.removeView(cover);
-            }
-
-            addView(cover, lp);
-        }
-
-        /*
-        @Override
-        protected void dispatchDraw(Canvas canvas) {
-            canvas.setDrawFilter(new PaintFlagsDrawFilter(1, Paint.ANTI_ALIAS_FLAG));
-            super.dispatchDraw(canvas);
-        }
-        */
-
-        @Override
-        public Bitmap getDrawingCache(boolean autoScale) {
-            final Bitmap b = super.getDrawingCache(autoScale);
-
-            if(mReflectionCacheInvalid){
-                if (/*(mTouchState != TOUCH_STATE_FLING && mTouchState != TOUCH_STATE_ALIGN) ||*/ mReflectionCache == null){
-                    try{
-                        mReflectionCache = createReflectionBitmap(b);
-                        mReflectionCacheInvalid = false;
-                    }
-                    catch (NullPointerException e){
-                        Log.e(VIEW_LOG_TAG, "Null pointer in createReflectionBitmap. Bitmap b=" + b, e);
-                    }
-                }
-            }
-            return b;
-        }
-
-        public void recycle(){ //todo add puttocache method and call recycle
-            if(mReflectionCache != null){
-                mReflectionCache.recycle();
-                mReflectionCache = null;
-            }
-            mReflectionCacheInvalid = true;
-
-            //removeAllViewsInLayout();
-        }
-
-    }
 
     public void scrollToItemPosition(int position) {
         int newItemOffset;
@@ -442,4 +352,5 @@ public class CoverFlowCarousel extends Carousel {
     public void setMaxRotationAngle(int maxRotationAngle) {
         mMaxRotationAngle = maxRotationAngle;
     }
+
 }

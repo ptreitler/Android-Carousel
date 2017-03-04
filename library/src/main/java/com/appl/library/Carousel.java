@@ -5,7 +5,15 @@ import java.util.LinkedList;
 
 import android.content.Context;
 import android.database.DataSetObserver;
+import android.graphics.Bitmap;
 import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.LinearGradient;
+import android.graphics.Matrix;
+import android.graphics.Paint;
+import android.graphics.PorterDuff;
+import android.graphics.PorterDuffXfermode;
+import android.graphics.Shader;
 import android.os.Build;
 import android.util.AttributeSet;
 import android.util.Log;
@@ -96,6 +104,32 @@ public class Carousel extends ViewGroup {
 
     private int mFirstVisibleChild;
     private int mLastVisibleChild;
+
+
+    //reflection
+    /**
+     * Size multiplier used to simulate perspective
+     */
+    private float mPerspectiveMultiplier = 1f;
+
+    /**
+     * Size of reflection as a fraction of original image (0-1)
+     */
+    protected float mReflectionHeight = 0.5f;
+    /**
+     * Starting opacity of reflection. Reflection fades from this value to transparency;
+     */
+    protected int mReflectionOpacity = 0x70;
+
+    protected final Matrix mReflectionMatrix = new Matrix();
+    private final Paint mPaint = new Paint();
+    //private final Paint mReflectionPaint = new Paint();
+    private final PorterDuffXfermode mXfermode = new PorterDuffXfermode(PorterDuff.Mode.DST_IN);
+    private final Canvas mReflectionCanvas = new Canvas();
+
+    private Bitmap mReflectionCache;
+    private boolean mReflectionCacheEnabled = false;
+
 
     protected final ViewCache<View> mCache = new ViewCache<>();
 
@@ -284,7 +318,7 @@ public class Carousel extends ViewGroup {
         int l, t, r, b;
         l = right - v.getMeasuredWidth();
         t = verticalCenter - v.getMeasuredHeight() / 2;
-        ;
+      
         r = right;
         b = t + v.getMeasuredHeight();
 
@@ -301,7 +335,7 @@ public class Carousel extends ViewGroup {
         int l, t, r, b;
         l = left;
         t = verticalCenter - v.getMeasuredHeight() / 2;
-        ;
+      
         r = l + v.getMeasuredWidth();
         b = t + v.getMeasuredHeight();
 
@@ -549,14 +583,19 @@ public class Carousel extends ViewGroup {
 
             mCache.cacheView(lastChild);
 
+            //fixed right to left scroll the child index will jump over bug.
             if (!mShouldRepeat) {
                 mLastVisibleChild--;
             }
             else {
-                if (mLastVisibleChild >= 0) {
+                if (mLastVisibleChild > 0) {
                     mLastVisibleChild--;
+                }else{
+                    mLastVisibleChild=mAdapter.getCount()-1;
                 }
             }
+            mReverseOrderIndex++;
+
 
             if (getChildCount() - 1 == mReverseOrderIndex) {
                 break;
@@ -703,15 +742,15 @@ public class Carousel extends ViewGroup {
     }
 
     @Override
-    public boolean onTouchEvent(MotionEvent event) {
+    public boolean onTouchEvent(MotionEvent ev) {
         if (mVelocityTracker == null) {
             mVelocityTracker = VelocityTracker.obtain();
         }
-        mVelocityTracker.addMovement(event);
+        mVelocityTracker.addMovement(ev);
 
-        final int action = event.getAction();
-        final float x = event.getX();
-        final float y = event.getY();
+        final int action = ev.getAction();
+        final float x = ev.getX();
+        final float y = ev.getY();
 
         switch (action) {
             case MotionEvent.ACTION_DOWN:
@@ -878,6 +917,26 @@ public class Carousel extends ViewGroup {
     public void setOnItemSelectedListener(OnItemSelectedListener onItemSelectedListener) {
         mOnItemSelectedListener = onItemSelectedListener;
     }
+
+    private Bitmap createReflectionBitmap(Bitmap original){
+        final int w = original.getWidth();
+        final int h = original.getHeight();
+        final int rh = (int) (h * mReflectionHeight);
+        final int gradientColor = Color.argb(mReflectionOpacity, 0xff, 0xff, 0xff);
+
+        final Bitmap reflection = Bitmap.createBitmap(original, 0, rh, w, rh, mReflectionMatrix, false);
+
+        final LinearGradient shader = new LinearGradient(0, 0, 0, reflection.getHeight(), gradientColor, 0x00ffffff, Shader.TileMode.CLAMP);
+        mPaint.reset();
+        mPaint.setShader(shader);
+        mPaint.setXfermode(mXfermode);
+
+        mReflectionCanvas.setBitmap(reflection);
+        mReflectionCanvas.drawRect(0, 0, reflection.getWidth(), reflection.getHeight(), mPaint);
+
+        return reflection;
+    }
+    public void setReflectionCacheEnabled(boolean enableViewReflection){mReflectionCacheEnabled=enableViewReflection;}
 
     public interface OnItemSelectedListener {
         void onItemSelected(View child, int position);
