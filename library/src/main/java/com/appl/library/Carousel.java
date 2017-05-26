@@ -96,8 +96,8 @@ public class Carousel extends ViewGroup {
      */
     private int mSlowDownCoefficient = 1;
 
-    protected int mChildWidth = 100;
-    protected int mChildHeight = 60;
+    protected int mChildWidth = 360;
+    protected int mChildHeight = 240;
 
     private int mSelection;
     protected Adapter mAdapter;
